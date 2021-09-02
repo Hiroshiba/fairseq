@@ -16,6 +16,7 @@ RUN mkdir /app && \
     git clone https://github.com/pytorch/fairseq && \
     cd fairseq && \
     git reset --hard 14c5bd027f04aae9dbb32f1bd7b34591b61af97f && \
+    pip install -U numpy && \
     pip install --editable ./ && \
     pip install soundfile
 
