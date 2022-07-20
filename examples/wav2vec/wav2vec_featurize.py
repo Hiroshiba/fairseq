@@ -13,7 +13,6 @@ import glob
 import os
 from shutil import copy
 
-import h5py
 import numpy as np
 import soundfile as sf
 import torch
@@ -46,7 +45,7 @@ class PretrainedWav2VecModel(nn.Module):
             z = self.model.feature_extractor(x)
             if isinstance(z, tuple):
                 z = z[0]
-            c = self.model.feature_aggregator(z)
+            c = None
         return z, c
 
 
@@ -89,23 +88,18 @@ class Prediction:
         with torch.no_grad():
             z, c = self.model(x.unsqueeze(0))
 
-        return z.squeeze(0).cpu().numpy(), c.squeeze(0).cpu().numpy()
+        return z.squeeze(0).cpu().numpy(), None
 
 
-class H5Writer:
-    """ Write features as hdf5 file in flashlight compatible format """
+class NpyWriter:
+    """ Write features as npy file in flashlight compatible format """
 
     def __init__(self, fname):
         self.fname = fname
         os.makedirs(os.path.dirname(self.fname), exist_ok=True)
 
     def write(self, data):
-        channel, T = data.shape
-
-        with h5py.File(self.fname, "w") as out_ds:
-            data = data.T.flatten()
-            out_ds["features"] = data
-            out_ds["info"] = np.array([16e3 // 160, T, channel])
+        np.save(self.fname, data)
 
 
 class EmbeddingDatasetWriter(object):
@@ -199,7 +193,7 @@ class EmbeddingDatasetWriter(object):
 
         fnames_context = map(
             lambda x: os.path.join(
-                self.output_path, x.replace("." + self.extension, ".h5context")
+                self.output_path, x.replace("." + self.extension, ".npy")
             ),
             map(os.path.basename, paths),
         )
@@ -210,7 +204,7 @@ class EmbeddingDatasetWriter(object):
             wav, sr = read_audio(name)
             z, c = self.model(wav)
             feat = z if self.use_feat else c
-            writer = H5Writer(target_fname)
+            writer = NpyWriter(target_fname)
             writer.write(feat)
 
     def __repr__(self):
